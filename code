@@ -1,0 +1,352 @@
+# importing all neccessary libraries/ modules for data manipulation and visual representation
+
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as matplot
+%matplotlib inline
+import statsmodels.api as sm
+import scipy.stats as stats
+import seaborn as sns
+from sklearn import preprocessing
+from sklearn.impute import KNNImputer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn import tree
+from sklearn.svm import SVC
+from sklearn.preprocessing import RobustScaler
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import classification_report
+from sklearn.ensemble import GradientBoostingClassifier
+from xgboost import XGBClassifier
+from collections import Counter
+from sklearn.decomposition import PCA
+from sklearn.datasets import load_digits
+from sklearn.cluster import KMeans
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
+from imblearn.over_sampling import SMOTE
+----------------------------------------------------------
+# reading the data
+df1=pd.read_csv('/home/jovyan/census_vp.csv', encoding='cp1252')
+df2=pd.read_csv('/home/jovyan/termination.csv', encoding='cp1252')
+df = pd.merge(df1, df2, on='employee_id', how='left')
+
+# Checking the data shape
+df1.shape
+df2.shape
+df.shape
+df
+----------------------------------------------------------
+# Checking for missing values
+df.isnull().any()
+
+# Checking the format of the columns
+df.info()
+
+# Checking all columns name
+df.columns
+-----------------------------------------------------------
+## Data Scrubbing
+
+# Renaming certain columns for better readability
+df = df.rename(columns={'length_of_service':'service', 'years_in_current_position':'current','years_in_previous_role':'previous',
+                        'performance_rating':'performance','talent_matrix':'talent','position_time_type':'position_type',
+                        'compensation_grade':'compensation','percentage_base-change':'change','promotion_within_two_years':'promotion',
+                        'marital_status':'relationship','termination_reason':'reason','termination_category':'turnover'})
+
+# Checking the columns name again
+df.columns
+df.head()
+
+# Dividing the columns into discrete and continous features
+numerical_feature = [feature for feature in df.columns if df[feature].dtypes !="O"]
+discrete_feature = [feature for feature in numerical_feature if len(df[feature].unique()) <10]
+continuous_feature = [feature for feature in numerical_feature if feature not in discrete_feature]
+
+continuous_feature
+
+# Dropping 'employee_id'
+df.drop(['employee_id'], axis=1, inplace=True)
+
+# Move the response variable termination to the front of the table
+front = df['turnover']
+df.drop(labels=['turnover'], axis=1, inplace = True)
+df.insert(0,'turnover', front)
+
+df.head(10)
+--------------------------------------------------------
+## Data Exploration
+
+# Calculating Termination Acrosss 'Generation'
+gen_agg = df.groupby(['generation', 'turnover'])['position_type'].count().unstack().fillna(0)
+gen_agg
+
+# Very simple one-linear using our agg_tips dataframe
+gen_agg.plot(kind='bar', stacked = True, figsize = (10,5))
+
+# Adding the title and rotating the x-axis labels to be horizontal
+plt.title('Termination Across Generation')
+plt.xticks(rotation=90, ha='center')
+----------------------------------------------------------
+## Distribution Plots
+
+# Distribution Plots (length_of_service - age - years_in_current_position)
+#Set up the metplotlib figure
+f, axes = plt.subplots(ncols=3, figsize=(15,6))
+
+# Graph Employee length_of_service
+sns.distplot(df.service, kde=False, color="r", ax=axes[0]).set_title('Employee Length Of Service Distribution')
+axes[0].set_ylabel('Employee Count')
+
+# Graph Employee years_in_current_position
+sns.distplot(df.current, kde=False, color="b", ax=axes[1]).set_title('Employee Years In Current Position Distribution')
+axes[1].set_ylabel('Employee Count')
+
+# Graph Employee years_in_previous_role
+sns.distplot(df.previous, kde=False, color="g", ax=axes[2]).set_title('Employee Years In Previous Role Distribution')
+axes[2].set_ylabel('Employee Count')
+--------------------------------------------------------------
+#Set up the metplotlib figure
+f, axes = plt.subplots(ncols=2, figsize=(15,6))
+
+# Graph Employee Age
+sns.distplot(df.age, kde=False, color="r", ax=axes[0]).set_title('Employee Age Distribution')
+axes[0].set_ylabel('Employee Count')
+
+# Graph Employee Percentage Base Change
+sns.distplot(df.change, kde=False, color="y", ax=axes[1]).set_title('Employee Percentage Base Change Distribution')
+axes[1].set_ylabel('Employee Count')
+----------------------------------------------------------------
+sns.kdeplot(
+   data=df, x="age", hue="generation",
+   fill=True, common_norm=False, palette="crest",
+   alpha=.5, linewidth=0,
+)
+----------------------------------------------------------------
+# Lenght of Service vs Percentage Base Change [Boxplot]
+sns.boxplot(x='service', y='relationship', hue='turnover', data=df)
+
+# Years In Current Position vs Percentage Base Change [Boxplot]
+sns.boxplot(x='current', y='position_type', hue='turnover', data=df)
+
+# Years In Previous Role vs Percentage Base Change [Boxplot]
+sns.boxplot(x='service', y='gender', hue='turnover', data=df)
+---------------------------------------------------------------
+## Correlation Matrix and Heatmap
+
+# Creating the Correlation Plot among all variables
+df.corr()
+
+# Creating the Correlation Plot among all variables
+    
+corrmat = df.corr(method = 'spearman')
+plt.figure(figsize=(10,10))
+#plot Heat Map
+g=sns.heatmap(corrmat,annot=True)
+-----------------------------------------------------------
+## K-Means Clustering of Turnover
+
+# Preparing data for plotting
+#Load Data
+data = load_digits().data
+pca = PCA(2)
+ 
+#Transform the data
+df = pca.fit_transform(data)
+
+df.shape
+
+# Aplying K-Means to the data
+#Initialize the class object
+kmeans = KMeans(n_clusters= 10)
+ 
+#predict the labels of clusters.
+label = kmeans.fit_predict(df)
+
+print(label)
+
+# Plotting Label 0 K-Means Clusters
+import matplotlib.pyplot as plt
+
+#filter rows of original data
+filtered_label0 = df[label == 0]
+ 
+#plotting the results
+plt.scatter(filtered_label0[:,0] , filtered_label0[:,1])
+plt.show()
+
+# Plotting Additional K-means Clusters
+
+#filter rows of original data
+filtered_label2 = df[label == 2]
+ 
+filtered_label8 = df[label == 8]
+ 
+#Plotting the results
+plt.scatter(filtered_label2[:,0] , filtered_label2[:,1] , color = 'red')
+plt.scatter(filtered_label8[:,0] , filtered_label8[:,1] , color = 'black')
+plt.show()
+
+# Plot All K-Means Clusters
+
+#Getting unique labels
+u_labels = np.unique(label)
+ 
+#plotting the results:
+for i in u_labels:
+    plt.scatter(df[label == i , 0] , df[label == i , 1] , label = i)
+plt.legend()
+plt.show()
+
+#find the centroid
+centers = np.array(kmeans.cluster_centers_)
+centers
+centroid = pd.DataFrame(centers)
+centroid
+
+#last we will visualizing the clustering result using seaborn based on sepalwidth and sepalLegnth
+
+sns.scatterplot(x = True, y = True, s = 50, c = 'change', marker = 'o', hue = True)
+sns.scatterplot(x = centers[:,0], y = centers[:,1], marker="o", color='r', s = 70, label="centroid")
+-----------------------------------------------------------------------------------
+
+## Data Pre-processing
+### Outliers Treatment
+
+# Handling Outliers in 'length_of_service' columns using Inter Quantile Range (IQR) Method
+IQR = df.service.quantile(0.75) - df.service.quantile(0.25)
+lower_bridge = df.service.quantile(0.25) - (IQR*1.5)
+upper_bridge = df.service.quantile(0.75) + (IQR*1.5)
+print (lower_bridge, upper_bridge)
+
+# Replacing Outliers in 'length_of_service' column using Inter Quantile Range (IQR) Method
+df.loc[df['service']>=23.76, 'service'] = 23.76
+df.loc[df['service']<=-10.89, 'service'] = -10.89
+
+# Handling Outliers in 'years_in_current_position' columns using Inter Quantile Range (IQR) Method
+IQR = df.current.quantile(0.75) - df.current.quantile(0.25)
+lower_bridge = df.current.quantile(0.25) - (IQR*1.5)
+upper_bridge = df.current.quantile(0.75) + (IQR*1.5)
+print (lower_bridge, upper_bridge)
+
+# Replacing Outliers in 'years_in_current_position' column using Inter Quantile Range (IQR) Method
+df.loc[df['current']>=10.135, 'current'] = 10.135
+df.loc[df['current']<=-4.225, 'current'] = -4.225
+
+# Handling Outliers in 'years_in_previous_role' columns using Inter Quantile Range (IQR) Method
+IQR = df.previous.quantile(0.75) - df.previous.quantile(0.25)
+lower_bridge = df.previous.quantile(0.25) - (IQR*1.5)
+upper_bridge = df.previous.quantile(0.75) + (IQR*1.5)
+print (lower_bridge, upper_bridge)
+
+# Replacing Outliers in 'years_in_previous_role' column using Inter Quantile Range (IQR) Method
+df.loc[df['previous']>=4.29, 'previous'] = 4.29
+df.loc[df['previous']<=-2.57, 'previous'] = -2.57
+
+# Handling Outliers in 'age' columns using Inter Quantile Range (IQR) Method
+IQR = df.age.quantile(0.75) - df.age.quantile(0.25)
+lower_bridge = df.age.quantile(0.25) - (IQR*1.5)
+upper_bridge = df.age.quantile(0.75) + (IQR*1.5)
+print (lower_bridge, upper_bridge)
+
+# Replacing Outliers in 'age' column using Inter Quantile Range (IQR) Method
+df.loc[df['age']>=77.0, 'age'] = 77.0
+df.loc[df['age']<=29.0, 'age'] = 29.0
+
+# Handling Outliers in 'change' columns using Inter Quantile Range (IQR) Method
+IQR = df.change.quantile(0.75) - df.change.quantile(0.25)
+lower_bridge = df.change.quantile(0.25) - (IQR*1.5)
+upper_bridge = df.change.quantile(0.75) + (IQR*1.5)
+print (lower_bridge, upper_bridge)
+
+# Replacing Outliers in 'age' column using Inter Quantile Range (IQR) Method
+df.loc[df['change']>= 0.075, 'change'] = 0.075
+df.loc[df['change']<= -0.045, 'change'] = -0.045
+-------------------------------------------------------------------------------
+## Missing Value Treatment and Encoding
+df.head()
+
+# Checking missing data
+df.isnull().sum()
+
+# Observing the percentage of missing values in each column
+df.isnull().sum()/df.shape[0]
+
+# Encoding the 'Termination' into 1 (Voluntary Terminated Employee) and 0 (Others)
+df['turnover'] = df['turnover'].apply(lambda x:1 if x=='Terminate Employee > Voluntary' else 0)
+
+# Encoding label in 'promotion within two years' into 1 (Yes) and 0 (null)
+df['promotion'] = df['promotion'].apply(lambda x:1 if x=='Yes' else 0)
+
+# Encoding labels in 'retirement_risk' into 1 (Yes) and 0 (null)
+df['retirement_risk'] = df['retirement_risk'].apply(lambda x:1 if x=='Yes' else 0)
+
+df.shape
+
+# Replacing Missing Values by Mode of the Column (These are in categorical variables)***
+df = df.fillna(df.mode().iloc[0])
+
+# Checking missing data
+df.isnull().sum()
+
+# Encoding labels in talent column into 0 to 8
+df['talent']= df['talent'].apply(lambda x: ['Box 9', 'Box 8', 'Box 7', 'Box 6', 'Box 5', 'Box 4', 'Box 3', 'Box 2', 'Box 1'].index(x))
+
+# Encode Labels in Column Performance Rating into 0 to 5
+df['performance']= df['performance'].apply(lambda x: ['Meets', 'Exceeds'].index(x))
+
+# Encoding labels in Retention column into 0 to 3
+df['retention']= df['retention'].apply(lambda x: ['High Risk of Loss', 'Medium Risk of Loss', 'Low Risk of Loss'].index(x))
+
+# Encode Labels in Column: Loss Impact
+df['loss_impact']= df['loss_impact'].apply(lambda x: ['8', '7', '6', 'Low Impact to Business', '5', 'Medium Impact to Business', '2', '1', 'High Impact to Business'].index(x))
+
+# Encode Labels in Column Performance Rating into 0 to 5
+df['successor']= df['successor'].apply(lambda x: ['No', 'Yes'].index(x))
+
+# Encode Labels in Column: Potential
+df['potential']= df['potential'].apply(lambda x: ['Needs Review','Well-Placed','Low','Promotable: An employee with the potential to be promoted.','Medium','High Potential - Ready Now','High'].index(x))
+
+# Dropping 'retirement_risk', 'compensation', and 'reason'
+df.drop(['compensation', 'talent', 'performance', 'reason'], axis=1, inplace=True)
+
+# Dropping 'race', 'generation', 'relationship', and 'position_type'
+df.drop(['gender','race','generation','relationship','position_type'], axis=1, inplace=True)
+
+# Printing columns names
+df.columns
+----------------------------------------------------------------------------------
+## Modeling
+
+# Overview Summary (Voluntary Termination(1) vs. Others(0))
+termination_Summary = df.groupby('turnover')
+termination_Summary.mean()
+
+# Checking if Target variable class is balanced
+df['turnover'].value_counts()
+
+# Creating x and y variable for modeling
+x = df.drop('turnover', axis=1)
+y = df['turnover']
+
+# Checking dimensions of 'x' and 'y'
+x.shape, y.shape
+------------------------------------------------------------------------------
+## Data Balancing
+
+
+
+
+
+
+
+
+
+
+
