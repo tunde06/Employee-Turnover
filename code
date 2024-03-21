@@ -9,6 +9,7 @@ import matplotlib as matplot
 import statsmodels.api as sm
 import scipy.stats as stats
 import seaborn as sns
+from seaborn import scatterplot
 from sklearn import preprocessing
 from sklearn.impute import KNNImputer
 from sklearn.preprocessing import LabelEncoder
@@ -24,7 +25,12 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import classification_report
 from sklearn.ensemble import GradientBoostingClassifier
+from numpy import loadtxt
 from xgboost import XGBClassifier
+from xgboost import plot_tree
+from sklearn.tree import export_graphviz
+from pydotplus import graph_from_dot_data
+from IPython.display import Image
 from collections import Counter
 from sklearn.decomposition import PCA
 from sklearn.datasets import load_digits
@@ -340,7 +346,259 @@ x.shape, y.shape
 ------------------------------------------------------------------------------
 ## Data Balancing
 
+# Since our data is imbalanced (number of examples in each class is unequally distributed),
+# SMOTE will be used to change the composition of samples in the training dataset by oversampling the minority class (1).
+x.head()
 
+# Making the Data Balanced using SMOTE Method
+oversample = SMOTE()
+x, y = oversample.fit_resample(x,y)
+
+# Using the Python counter to hold the count of each of the elements present in the container
+counter = Counter(y)
+print(counter)
+
+# Checking dimensions of 'x'
+x.shape
+
+# Applying PCA for dimensionality reduction
+pca = PCA(0.98)
+X_pca = pca.fit_transform(x)
+X_pca.shape
+
+# Creating the Correlation Plot among all variables
+df.corr()
+----------------------------------------------------------
+## Splitting Data into Training and Testing Set
+
+# Splitting Data into Train and Test Set with a ratio of 80:20 for Modelling
+x_train, x_test, y_train, y_test = train_test_split(X_pca,y,test_size=0.2, random_state=10)
+---------------------------------------------------------
+## Logistic Regression Model
+
+# Initiating the Logistic Regression Model
+lr_model = LogisticRegression()
+
+# Fitting/Training the Logistic Regression Model
+lr_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using the Logistic Regression Model
+y_pred_lr = lr_model.predict(x_test)
+
+# Predicting for Test Dataset using the Logistic Regression Model
+y_pred_lr = lr_model.predict(x_test)
+
+# Checking the Accuracy, Precision, Recall and F1-score of the Logistic Regression Model on Test Dataset
+print('Accuracy of Logistic Regression Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_lr)))
+print('Precision of Logistic Regression Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_lr)))
+print('Recall of Logistic Regression Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_lr)))
+print('F1-score of Logistic Regression Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_lr)))
+
+accuracy_score(y_test, y_pred_lr)
+
+y_pred_lr
+--------------------------------------------------
+## Decision Trees Model
+
+# Initiating the Decision Tree Model
+dt_model = tree.DecisionTreeClassifier()
+
+# Fitting/Training the Decision Tree Model
+dt_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using the Decision Tree Model
+y_pred_dt = dt_model.predict(x_test)
+
+# Predicting for Test Dataset using the Decision Tree Model
+y_pred_dt = dt_model.predict(x_test)
+
+# Checking the Accuracy, Precision, Recall and F1-score of the Model on Test Dataset
+print('Accuracy of Decision Tree Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_dt)))
+print('Precision of Decision Tree Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_dt)))
+print('Recall of Decision Tree Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_dt)))
+print('F1-score of Decision Tree Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_dt)))
+
+# Visualizing the Decision Tree for Understanding
+fig = plt.figure(figsize=(25,20))
+_= tree.plot_tree(dt_model,
+                 feature_names=x.columns,
+                 class_names='turnover',
+                 filled=True)
+
+# Prunning the Decision Tree Model
+max_depth = []
+acc = []
+for i in range(1,30):
+ dt_model = tree.DecisionTreeClassifier(max_depth=i, random_state = 42)
+ dt_model.fit(x_train, y_train)
+ pred = dt_model.predict(x_test)
+ acc.append(accuracy_score(y_test, pred))
+ max_depth.append(i)
+
+print(max(acc))
+depth = acc.index(max(acc)) + 1
+depth
+
+dt_model = tree.DecisionTreeClassifier(max_depth=3, random_state = 42)
+dt_model.fit(x_train, y_train)
+pred = dt_model.predict(x_test)  # predictions on testing data
+accuracy_score(y_test, pred)
+
+# Visualizing the Prunned Decision Tree
+
+fig = plt.figure(figsize=(25,20))
+_= tree.plot_tree(dt_model,
+                 feature_names=x.columns,
+                 class_names='turnover',
+                 filled=True)
+
+# Viewing 'x'
+df.head()
+
+# The model predict what employee will voluntarily terminate 
+dt_model.predict([[17.88,6.01,0.00,63.0,1]])
+----------------------------------------------
+## Random Forest Model
+
+# Initiating the Random Forest Model
+rf_model = RandomForestClassifier()
+
+# Fitting/Training the Random Forest Model
+rf_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using the Random Forest Model
+y_pred_rf = rf_model.predict(x_test)
+
+# Checking the Accuracy, Prwecision, Recall and F1-score of the Model on Test Dataset
+print('Accuracy of Random Forest Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_rf)))
+print('Precision of Random Forest Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_rf)))
+print('Recall of Random Forest Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_rf)))
+print('F1-score of Random Forest Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_rf)))
+
+# Visualizing Random Forest Model for Understanding
+fn=features = list(df.columns[1:])
+cn=[str(x) for x in cn]
+
+fig, axes = plt.subplots(nrows = 1,ncols = 1,figsize = (4,4), dpi=800)
+tree.plot_tree(rf_model.estimators_[0],
+               feature_names = fn, 
+               class_names=cn,
+               filled = False);
+fig.savefig('turnover')
+
+# Viewing 'x'
+df.head()
+
+# The model predict what employee will voluntarily terminate 
+rf_model.predict([[4.68,4.680,0.00,40.0,1]])
+-------------------------------------------------
+## Naive Bayes Model
+
+# Initiating the Naive Bayes Model
+nb_model = GaussianNB()
+
+# Fitting/Training the Naive Bayes Model
+nb_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using the Naive Bayes Model
+y_pred_nb = nb_model.predict(x_test)
+
+# Checking the Accuracy, Precision, Recall and F1-score of the Naive Bayes Model on Test Dataset
+print('Accuracy of Naive Bayes Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_nb)))
+print('Precision of Naive Bayes Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_nb)))
+print('Recall of Naive Bayes Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_nb)))
+print('F1-score of Naive Bayes Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_nb)))
+
+# Making Confusion Matrix
+from sklearn.metrics import confusion_matrix
+
+# The confusion matrix shows theere are 345+1821= incorrect predictions, and 770+2188=  correct predictions.
+cm = confusion_matrix(y_test, y_pred_nb)
+cm
+
+# The model predict what employee will voluntarily terminate 
+nb_model.predict([[17.88,6.01,0.00,63.0,1]])
+------------------------------------------------
+## Support Vector Machine Model
+
+# Initiating the Support Vector Machine Model
+svm_model = SVC(kernel='linear')
+
+# Fitting/Training the Support Vector Machine Model
+svm_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using the Support Vector Machine Model
+y_pred_svm = svm_model.predict(x_test)
+
+# Checking the Accuracy, Precision, Recall and F1-score of the Support Vector Machine Model on Test Dataset
+print('Accuracy of Support Vector Machine Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_svm)))
+print('Precision of Support Vector Machine Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_svm)))
+print('Recall of Support Vector Machine Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_svm)))
+print('F1-score of Support Vector Machine Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_svm)))
+
+# Making predictions with our data
+predictions = svm_model.predict(x_test)
+print(predictions[:5])
+
+# Visualizing the linear function for our SVM classifier
+w = svm_model.coef_[0]
+b = svm_model.intercept_[0]
+x_visual = np.linspace(32,57)
+y_visual = -(w[0] / w[1]) * x_visual - b / w[1]
+
+scatterplot(data = x_train, x=0, y=1, hue=y_train)
+plt.plot(x_visual, y_visual)
+plt.show()
+
+# The model predict what employee will voluntarily terminate 
+svm_model.predict([[17.88,6.01,0.00,63.0,1]])
+-------------------------------------------------
+## Gradient Boosting Model
+
+# Initiating the Gradient Boosting Model
+gb_model = GradientBoostingClassifier()
+
+# Fitting/Training the Gradient Boosting Model
+gb_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using the Gradient Boosting Model
+y_pred_gb = gb_model.predict(x_test)
+
+# Checking the Accuracy, Precision, Recall and F1-score of the Gradient Boosting Model on Test Dataset
+print('Accuracy of Gradient Boosting Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_gb)))
+print('Precision of Gradient Boosting Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_gb)))
+print('Recall of Gradient Boosting Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_gb)))
+print('F1-score of Gradient Boosting Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_gb)))
+
+gb_model.fit(x_train,y_train)
+print(classification_report(y_test,gb_model.predictt(x_test)))
+
+# Get the tree number 42
+sub_tree_42 = gb_model.estimators_[42, 0]
+
+# The model predict what employee will voluntarily terminate 
+gb_model.predict([[17.88,6.01,0.00,63.0,1]])
+-------------------------------------------------
+## Extreme Gradient Boosting Model
+
+# Initiating the X-Gradient Boosting Model
+xgb_model = XGBClassifier()
+
+# Fitting/Training the Extreme Gradient Boosting Model
+xgb_model.fit(x_train, y_train)
+
+# Predicting for Test Dataset using XGBClassifier Model
+y_pred_xgb = xgb_model.predict(x_test)
+
+# Checking the Accuracy, Precision, Recall and F1-score of the X-Gradient Boosting Model on Test Dataset
+print('Accuracy of X-Gradient Boosting Model on Test Set: {:.2f}'.format(accuracy_score(y_test, y_pred_xgb)))
+print('Precision of X-Gradient Boosting Model on Test Set: {:.2f}'.format(precision_score(y_test, y_pred_xgb)))
+print('Recall of X-Gradient Boosting Model on Test Set: {:.2f}'.format(recall_score(y_test, y_pred_xgb)))
+print('F1-score of X-Gradient Boosting Model on Test Set: {:.2f}'.format(f1_score(y_test, y_pred_xgb)))
+
+# The model predict what employee will voluntarily terminate 
+xgb_model.predict([[17.88,6.01,0.00,63.0,1]])
+----------------------------------------------
 
 
 
