@@ -66,7 +66,7 @@ df.shape
 df
 ```
 
-## Checking for missing values
+## Data Quality Check
 ***
 
 ```python
@@ -357,7 +357,7 @@ df.loc[df['change']>= 0.075, 'change'] = 0.075
 df.loc[df['change']<= -0.045, 'change'] = -0.045
 ```
 
-## Missing Value Treatment and Encoding
+## Missing Data Treatment and Encoding
 ***
 
 ```python
